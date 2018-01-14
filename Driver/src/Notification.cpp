@@ -65,12 +65,10 @@ void Notification::warn(const __FlashStringHelper *message, const String &printa
     }
 }
 
-void Notification::fatal(const __FlashStringHelper *message) {
-    if (!production) {
-        SERIAL_PRINT(F("FATAL: ")); SERIAL_PRINTLN(message);
-    }
+void Notification::fatal(const __FlashStringHelper *message, uint8_t blink) {
+    SERIAL_PRINT(F("FATAL: ")); SERIAL_PRINTLN(message);
     if (signaling != NULL) {
-        signaling->signal_failure_forever(500);
+        signaling->signal_failure_count(blink);
     }
     while(1);
 }

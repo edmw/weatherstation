@@ -55,4 +55,24 @@ void Signaling::signal_failure_forever(int ms) {
     }
 }
 
+void Signaling::signal_failure_count(uint8_t num) {
+    while (ledpin >= 0) {
+        for (uint8_t i = 0; i < num; i++) {
+            digitalWrite(ledpin, LOW);
+            delay(500);
+            digitalWrite(ledpin, HIGH);
+            delay(500);
+        }
+        for (uint8_t i = 0; i < 20; i++) {
+            digitalWrite(ledpin, LOW);
+            delay(50);
+            digitalWrite(ledpin, HIGH);
+            delay(50);
+        }
+    }
+    while(1) {
+        delay(1000);
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////

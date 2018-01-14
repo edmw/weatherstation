@@ -15,13 +15,13 @@ typedef unsigned long time_t;
 #endif
 
 typedef struct {
-  time_t timestamp;
-  float temperature;
-  float temperature_external;
-  float pressure;
-  float humidity;
-  float illuminance;
-  float uvintensity;
+    time_t timestamp;
+    float temperature;
+    float temperature_external;
+    float pressure;
+    float humidity;
+    float illuminance;
+    float uvintensity;
 } readings_t;
 
 class Readings {

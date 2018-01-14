@@ -24,6 +24,8 @@ public:
     void signal_failure_once(int ms);
     // Signals a failure by blinking output forever. This method does not return.
     void signal_failure_forever(int ms);
+    // Signals a failure by blinking output forever. This method does not return.
+    void signal_failure_count(uint8_t num);
 
 private:
     int ledpin;

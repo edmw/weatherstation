@@ -43,6 +43,9 @@
 //   + allows calculation of altitude from pressure measurement
 //   - additional dependency
 //   - could be done on server
+// * check if there is a new driver version and perform an update over wifi when indicated
+//   + no more cable
+//   - requires some server side action
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
@@ -262,7 +265,7 @@ bool setupBMP280(void) {
     if (bmp280.begin(BMP280_I2C)) {
         return true;
     }
-    notification.fatal(F("Failed to find a valid BMP280 sensor!"));
+    notification.fatal(F("Failed to find a valid BMP280 sensor!"), 10);
 }
 
 void readBMP280(Readings *readings) {
@@ -310,7 +313,7 @@ bool setupBME280(void) {
         );
         return true;
     }
-    notification.fatal(F("Failed to find a valid BME280 sensor!"));
+    notification.fatal(F("Failed to find a valid BME280 sensor!"), 11);
 }
 
 void readBME280(Readings *readings) {
@@ -483,18 +486,20 @@ void setup() {
     signaling.begin(PRODUCTION);
     notification.begin(PRODUCTION, &signaling);
 
+    notification.info(F("Setup started"));
+
     // A Files object is used to manage a file-system in Flash memory.
     if (!files.begin()) {
-        notification.fatal(F("Failed to begin files!"));
+        notification.fatal(F("Failed to begin files!"), 1);
     }
     // A Values object is used to manage a value-store in Flash memory.
     if (!values.begin(&files)) {
-        notification.fatal(F("Failed to begin values!"));
+        notification.fatal(F("Failed to begin values!"), 2);
     }
 
     // A Network object is used to manage local network access.
     if (!network.begin(&values)) {
-        notification.fatal(F("Failed to begin network!"));
+        notification.fatal(F("Failed to begin network!"), 3);
     }
 
     if (clock.begin()) {
@@ -505,13 +510,13 @@ void setup() {
                 network.disconnect();
             }
             else {
-                notification.fatal(F("Failure to setup clock: no network!"));
+                notification.fatal(F("Failure to setup clock: no network!"), 4);
             }
         #endif
         }
     }
     else {
-        notification.fatal(F("Failure to setup clock!"));
+        notification.fatal(F("Failure to setup clock!"), 5);
     }
 
     // setup OneWire sensors

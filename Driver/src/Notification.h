@@ -38,7 +38,7 @@ public:
     // Any of the following methods produces output to the serial connection, triggers a signal
     // and stops execution.
 
-    void fatal(const __FlashStringHelper *message);
+    void fatal(const __FlashStringHelper *message, uint8_t blink = 0);
 
 private:
     bool production;
