@@ -605,7 +605,8 @@ void loop() {
             TRANSPORT_SERVER,
             TRANSPORT_PORT,
             PRODUCTION ? TRANSPORT_DATABASE : "test",
-            DEVICE_ID
+            DEVICE_ID,
+            PROBE_LOCATION
         );
         if (transport.begin(&network)) {
             if (transport.send(readings)) {

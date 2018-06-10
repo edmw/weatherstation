@@ -12,13 +12,14 @@ extern Notification notification;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-Transport::Transport(String server, int port, String database, String logger) {
+Transport::Transport(String server, int port, String database, String logger, String location) {
     this->server = server;
     this->port = port;
     this->user = "";
     this->token = "";
     this->database = database;
     this->logger = logger;
+    this->location = location;
     this->network = NULL;
 }
 
@@ -72,10 +73,11 @@ bool Transport::send(Readings &readings) {
             HttpClient httpClient = HttpClient(*networkClientPtr, server, port);
 
             String measurement = "weather";
-            String tag_set = "location=terrace,logger=" + logger;
+            String tag_set = "location=" + location + ",logger=" + logger;
             String field_set = format_fields(readings);
 
             if (field_set.length() > 0) {
+                notification.info(F("*TRANSPORT: database="), database);
                 notification.info(F("*TRANSPORT: measurement="), measurement);
                 notification.info(F("*TRANSPORT: tag_set="), tag_set);
                 notification.info(F("*TRANSPORT: field_set="), field_set);

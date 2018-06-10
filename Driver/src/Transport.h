@@ -18,7 +18,7 @@ class Transport {
 public:
     // Constructs a transporter to the given server at the given port for the given database.
     // Logger is an arbitrary identifier for a specific Weather station.
-    Transport(String server, int port, String database, String logger);
+    Transport(String server, int port, String database, String logger, String location);
 
     // Begin with the given network manager. Must be called before any other method.
     bool begin(Network *network);
@@ -37,6 +37,7 @@ private:
     String database;
 
     String logger;
+    String location;
 
     Network *network;
 };
