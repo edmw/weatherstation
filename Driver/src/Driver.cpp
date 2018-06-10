@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// Weather Station driver which will
+// Weather Device driver which will
 // * collect sensor measurements from various sensors
 // * send sensor measurements to a server via wifi
 // * go to deep sleep for a defined amount of time to save power
@@ -12,7 +12,7 @@
 //
 // This driver can send sensor measurements to an InfluxDB server using InfluxDB’s Line Protocol.
 //
-// Copyright (c) 2017 Michael Baumgärtner
+// Copyright (c) 2017-2018 Michael Baumgärtner
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -76,11 +76,12 @@
 #include <DHT.h>
 #include <SPI.h>
 
-// Weather Station
+// Weather Device
 
 #include "Readings.h"
 #include "Transport.h"
 
+#include "I2C.h"
 #include "I2CExtender.h"
 
 // General
@@ -90,13 +91,13 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Define identifier for a specific weather station. Derived from the ESP8266 chip id.
+// Define identifier for a specific weather device. Derived from the ESP8266 chip id.
 // This is used to identify a station on local network and as source identifier for measurements.
 // Note: If compiled for an Arduino system statically set to a fixed string.
 #ifdef ESP8266
-const String STATION_ID = "ESP" + String(ESP.getChipId());
+const String DEVICE_ID = "ESP" + String(ESP.getChipId());
 #else
-const String STATION_ID = "Arduino";
+const String DEVICE_ID = "Arduino";
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,8 +113,8 @@ const String STATION_ID = "Arduino";
 extern const bool PRODUCTION = true;
 
 // Define measuring interval and minimum delay between measurements.
-const long MEASURING_INTERVAL = PRODUCTION ? 5 * 60 * 1000 : 8 * 1000; // milliseconds
-const long MEASURING_INTERVAL_DELAY_MIN = PRODUCTION ? 60 * 1000 : 4 * 1000; // milliseconds
+const long MEASURING_INTERVAL = PRODUCTION ? 5 * 60 * 1000 : 1 * 60 * 1000; // milliseconds
+const long MEASURING_INTERVAL_DELAY_MIN = PRODUCTION ? 60 * 1000 : 20 * 1000; // milliseconds
 
 // Enable transport to InfluxDB server: Undef to disable sending measurements.
 #define TRANSPORT_ON
@@ -266,6 +267,7 @@ bool setupBMP280(void) {
         return true;
     }
     notification.fatal(F("Failed to find a valid BMP280 sensor!"), 10);
+    return false;
 }
 
 void readBMP280(Readings *readings) {
@@ -314,6 +316,7 @@ bool setupBME280(void) {
         return true;
     }
     notification.fatal(F("Failed to find a valid BME280 sensor!"), 11);
+    return false;
 }
 
 void readBME280(Readings *readings) {
@@ -450,6 +453,10 @@ void setupSensorsViaOneWire() {
 void setupSensorsViaI2C() {
     // Setup all sensors connected via I2C bus.
 
+    i2c_setup();
+
+    if (!PRODUCTION) i2c_scan();
+
     #ifdef BME280_ON
     setupBME280();
     #endif
@@ -531,14 +538,14 @@ void setup() {
 
     // setup analog sensors
     setupSensorsViaADS();
-
-    notification.info(F("Weather Station running ... "), STATION_ID);
 }
 
 
 void deepSleepAndResetAfter(unsigned long sleep_millis);
 
 void loop() {
+    notification.info(F("Weather Device running ... "), DEVICE_ID);
+
     notification.info(F("Get readings from sensors ..."));
     elapsed_millis get_readings_elapsed; // measure time needed for reading
 
@@ -607,7 +614,7 @@ void loop() {
             TRANSPORT_SERVER,
             TRANSPORT_PORT,
             PRODUCTION ? TRANSPORT_DATABASE : "test",
-            STATION_ID
+            DEVICE_ID
         );
         if (transport.begin(&network)) {
             if (transport.send(readings)) {
