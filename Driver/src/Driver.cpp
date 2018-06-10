@@ -84,6 +84,10 @@
 #include "I2C.h"
 #include "I2CExtender.h"
 
+// Configuration
+
+#include "Driver.h"
+
 // General
 
 #include "SERIAL.h"
@@ -102,32 +106,12 @@ const String DEVICE_ID = "Arduino";
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Enable deep sleep mode: Undef to pause execution instead of entering deep sleep.
-// Note: GPIO16 must be connected to RST for deep sleep mode to work.
-// Note: This will have no effect at all if compiled for an Arduino system.
-#define DEEPSLEEP_ON
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 // Global toggle for production or development mode.
-extern const bool PRODUCTION = true;
+extern const bool PRODUCTION = PRODUCTION_MODE;
 
 // Define measuring interval and minimum delay between measurements.
 const long MEASURING_INTERVAL = PRODUCTION ? 5 * 60 * 1000 : 1 * 60 * 1000; // milliseconds
 const long MEASURING_INTERVAL_DELAY_MIN = PRODUCTION ? 60 * 1000 : 20 * 1000; // milliseconds
-
-// Enable transport to InfluxDB server: Undef to disable sending measurements.
-#define TRANSPORT_ON
-const String TRANSPORT_SERVER   = "192.168.178.111";
-const int    TRANSPORT_PORT     = 18086;
-const String TRANSPORT_DATABASE = "homemonitor";
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-// PIN for signaling LED (see schematics, use -1 to disable status led)
-// The driver will use this to signal failure states in execution.
-
-#define SIGNALING_LED LED_BUILTIN // D4 // GPIO2
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -147,7 +131,11 @@ Clock clock = Clock(Clock::off);
 // PIN for enabling I2C extender (see schematics, use -1 to disable extender).
 // The driver will use this to minimize power consumption of extended I2C bus.
 
+#ifdef I2C_EXTENDER_ON
 #define I2C_EXTENDER_ENABLE D7 // GPIO13
+#else
+#define I2C_EXTENDER_ENABLE -1
+#endif
 
 I2CExtender i2c_extender(I2C_EXTENDER_ENABLE);
 
@@ -158,7 +146,6 @@ I2CExtender i2c_extender(I2C_EXTENDER_ENABLE);
 // * ML8511
 
 // analogue input
-#undef ADS1115_ON
 Adafruit_ADS1115 ads(0x48);
 
 // analogue reference 3.3V
@@ -168,7 +155,7 @@ uint16_t ads_reference;
 // SENSORS
 
 // Temperature
-#define DS18B20_ON
+#ifdef DS18B20_ON
 #define DS18B20_PIN D6 // 1-wire pin
 const String DS18B20_ID = "DS18B20";
 OneWire oneWire(DS18B20_PIN);
@@ -176,38 +163,35 @@ DallasTemperature ds18b20(&oneWire);
 #define DS18B20_CALIBRATION_LO 1.4  // reference 0.01°C
 #define DS18B20_CALIBRATION_HI 98.8 // reference 100°C
 #define DS18B20_CALIBRATION_RANGE (DS18B20_CALIBRATION_HI - DS18B20_CALIBRATION_LO)
+#endif
 
 // Temperature + Pressure
-#undef BMP280_ON
 #define BMP280_I2C 0x76
 const String BMP280_ID = "BMP280";
 Adafruit_BMP280 bmp280;
 
 // Temperature + Pressure + Humidity
-#define BME280_ON
 #define BME280_I2C 0x76
 const String BME280_ID = "BME280";
 Adafruit_BME280 bme280;
 
 // Temperature + Humidity
-#undef DHT22_ON
+#ifdef DHT22_ON
 #define DHT22_PIN D3 // 1-wire pin
 const String DHT22_ID = "DHT22";
 DHT dht(DHT22_PIN, DHT22);
+#endif
 
 // Illuminance
-#undef TSL2561_ON
 #define TSL2561_I2C TSL2561_ADDR_FLOAT
 const String TSL2561_ID = "TSL2561";
 Adafruit_TSL2561_Unified tsl2561 = Adafruit_TSL2561_Unified(TSL2561_I2C, 12345);
 
 // UV intensity
-#undef VEML6070_ON
 const String VEML6070_ID = "VEML6070";
 Adafruit_VEML6070 veml6070 = Adafruit_VEML6070();
 
 // UV intensity
-#undef ML8511_ON
 #define ML8511_PIN D5 // enable pin
 #define ML8511_ADS 1 // ads channel
 const String ML8511_ID = "ML8511";
@@ -230,6 +214,7 @@ Readings readings;
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // DS18B20
 // datasheet: https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf
+#ifdef DS18B20_ON
 
 bool setupDS18B20(void) {
     ds18b20.begin();
@@ -249,6 +234,8 @@ void readDS18B20(Readings *readings) {
     t = (((t - DS18B20_CALIBRATION_LO) * 99.99) / DS18B20_CALIBRATION_RANGE) + 0.01;
     readings->store(t, Readings::temperature_external, DS18B20_ID);
 }
+
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // BMP280
@@ -337,6 +324,7 @@ void readBME280(Readings *readings) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // DHT22
 // datasheet: http://akizukidenshi.com/download/ds/aosong/AM2302.pdf
+#ifdef DHT22_ON
 
 bool setupDHT22(void) {
     dht.begin();
@@ -356,6 +344,8 @@ void readDHT22(Readings *readings) {
     readings->store(t, Readings::temperature_external, DHT22_ID);
     readings->store(h, Readings::humidity, DHT22_ID);
 }
+
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // TSL2561
@@ -602,11 +592,12 @@ void loop() {
     notification.info_millis(F("Done getting readings from sensors ... "), get_readings_millis);
 
 
+    // push readings to server
+    #ifdef TRANSPORT_ON
+
     notification.info(F("Push readings to server ..."));
     elapsed_millis push_readings_elapsed; // measure time needed for sending
 
-    // push readings to server
-    #ifdef TRANSPORT_ON
     if (network.connect()) {
         clock.sync();
 
@@ -633,14 +624,22 @@ void loop() {
     else {
         notification.warn(F("Failed to connect to network!"));
     }
-    #endif
 
     unsigned long push_readings_millis = push_readings_elapsed; // get time needed for sending
     notification.info_millis(F("Done pushing readings to server ... "), push_readings_millis);
 
+    #else // ifdef TRANSPORT_ON
+
+    notification.info(F("Skip pushing readings to server ... "));
+
+    #endif // ifdef TRANSPORT_ON
+
     // loop
 
-    long interval = MEASURING_INTERVAL - get_readings_millis - push_readings_millis;
+    long interval = MEASURING_INTERVAL - get_readings_millis;
+    #ifdef TRANSPORT_ON
+    interval = interval - push_readings_millis;
+    #endif
     long interval_delay = std::max(interval, MEASURING_INTERVAL_DELAY_MIN);
     #ifdef DEEPSLEEP_ON
     notification.info_millis(F("*Sleeping for "), interval_delay);
