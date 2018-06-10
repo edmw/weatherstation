@@ -88,6 +88,10 @@
 
 #include "Driver.h"
 
+#ifdef PRIVATE
+#include "private.h"
+#endif
+
 // General
 
 #include "SERIAL.h"
@@ -502,7 +506,11 @@ void setup() {
     if (clock.begin()) {
         if (clock.isRunning() && clock.isIndeterminate()) {
         #ifdef TRANSPORT_ON
-            if (network.connect()) {
+            #ifdef PRIVATE
+            if (network.connect(NETWORK_SSID, NETWORK_PASS)) {
+            #else
+            if (network.connect(DEVICE_ID)) {
+            #endif
                 clock.sync();
                 network.disconnect();
             }
@@ -598,7 +606,11 @@ void loop() {
     notification.info(F("Push readings to server ..."));
     elapsed_millis push_readings_elapsed; // measure time needed for sending
 
-    if (network.connect()) {
+    #ifdef PRIVATE
+    if (network.connect(NETWORK_SSID, NETWORK_PASS)) {
+    #else
+    if (network.connect(DEVICE_ID)) {
+    #endif
         clock.sync();
 
         Transport transport(

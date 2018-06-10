@@ -60,8 +60,23 @@ void finishNetworkForWiFi(WiFiManager *wm, Network *network) {
     signaling.signal_off();
 }
 
-bool Network::connect(void) {
+bool Network::connect(String ssid, String password) {
     WiFi.forceSleepWake();
+    delay(100);
+
+    WiFi.mode(WIFI_STA);
+    delay(100);
+    WiFi.begin(ssid.c_str(), password.c_str());
+    int status = WiFi.waitForConnectResult();
+    if (status != WL_CONNECTED) {
+        notification.info(F("*WIFI: status: "), status);
+    }
+    return status == WL_CONNECTED;
+}
+
+bool Network::connect(String logger) {
+    WiFi.forceSleepWake();
+    delay(100);
 
     char influx_secret_buffer[34];
     values->copy(influx_secret_buffer, sizeof(influx_secret_buffer), Values::influx_secret);
@@ -75,7 +90,7 @@ bool Network::connect(void) {
         // Development: print debug output
         wiFiManager.setDebugOutput(true);
     }
-    wiFiManager.setConnectTimeout(1*60);
+    wiFiManager.setConnectTimeout(2*60);
     wiFiManager.setConfigPortalTimeout(5*60);
 
     WiFiManagerParameter wm_influx_secret("Influx", "Influx Shared Secret", influx_secret_buffer, 32);
@@ -85,7 +100,7 @@ bool Network::connect(void) {
 
     prepareNetworkForWiFi(&wiFiManager, this);
 
-    if (wiFiManager.autoConnect()) {
+    if (wiFiManager.autoConnect(logger.c_str(), NULL)) {
 
         strlcpy(influx_secret_buffer, wm_influx_secret.getValue(), 34);
         if (configChanged) {
@@ -102,6 +117,7 @@ bool Network::connect(void) {
 
 void Network::disconnect(void) {
     WiFi.forceSleepBegin();
+    delay(100);
 }
 
 std::unique_ptr<Client> Network::createClient(void) {

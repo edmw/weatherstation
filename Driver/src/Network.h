@@ -28,7 +28,10 @@ public:
     bool begin(Values *values);
 
     // Connects to the WiFi network.
-    bool connect(void);
+    bool connect(String logger);
+
+    // Connects to the WiFi network with the specified ssid and password.
+    bool connect(String ssid, String password);
 
     // Disconnects from the WiFi network.
     void disconnect(void);
