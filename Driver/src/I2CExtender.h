@@ -18,9 +18,6 @@ public:
     // Deactivates the I2C extender module by deactivating the enable pin.
     void deactivate(void);
 
-    // Scans the I2C bus for connected devices. Diagnose method.
-    void scan(void);
-
 private:
     int enablepin;
 };

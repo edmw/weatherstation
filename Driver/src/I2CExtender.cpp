@@ -40,48 +40,4 @@ void I2CExtender::deactivate(void) {
     }
 }
 
-void I2CExtender::scan() {
-    if (enablepin < 0) return;
-
-    int state = digitalRead(enablepin);
-    SERIAL_PRINT(F("I2C Scan: Extender="));
-    SERIAL_PRINTB(state);
-    SERIAL_PRINTLN();
-
-    byte error;
-    byte address;
-
-    int count = 0;
-
-    SERIAL_PRINTLN(F("I2C Scan..."));
-
-    Wire.begin();
-
-    for(address = 1; address < 127; address++) {
-        Wire.beginTransmission(address);
-        error = Wire.endTransmission();
-
-        if (error == 0) {
-            SERIAL_PRINT(F("I2C Scan: Device found at address "));
-            SERIAL_PRINT_BYTE(address);
-            SERIAL_PRINTLN();
-            count++;
-        }
-        else if (error == 4) {
-            SERIAL_PRINT(F("I2C Scan: Error "));
-            SERIAL_PRINT(error);
-            SERIAL_PRINT(F(" at address "));
-            SERIAL_PRINT_BYTE(address);
-            SERIAL_PRINTLN();
-        }
-        delay(10);
-    }
-    if (count == 0) {
-        SERIAL_PRINTLN(F("I2C Scan: No devices found"));
-    }
-    else {
-        SERIAL_PRINTLN(F("I2C Scan: Done"));
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
