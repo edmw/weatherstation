@@ -670,7 +670,7 @@ void loop() {
 /// Deep sleep for the specified amount of milliseconds and start again with reset.
 void deepSleepAndResetAfter(unsigned long sleep_millis) {
     #ifdef ESP8266
-    ESP.deepSleep(sleep_millis * 1000);
+    ESP.deepSleep(sleep_millis * 1000, WAKE_RF_DISABLED);
     #else
     delay(sleep_millis);
     #endif
