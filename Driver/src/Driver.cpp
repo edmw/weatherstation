@@ -108,6 +108,8 @@ const String DEVICE_ID = "ESP" + String(ESP.getChipId());
 const String DEVICE_ID = "Arduino";
 #endif
 
+extern const int FW_VERSION;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Global toggle for production or development mode.
@@ -542,7 +544,7 @@ void setup() {
 void deepSleepAndResetAfter(unsigned long sleep_millis);
 
 void loop() {
-    notification.info(F("Weather Device running ... "), DEVICE_ID);
+    notification.info(F("Weather Device running ... "), DEVICE_ID + "/" + String(FW_VERSION));
 
     notification.info(F("Get readings from sensors ..."));
     elapsed_millis get_readings_elapsed; // measure time needed for reading
