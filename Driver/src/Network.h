@@ -21,7 +21,7 @@
 
 class Network {
 public:
-    Network(void);
+    Network(String deviceid);
 
     // Begin managing the WiFi network. Must be called before any other method.
     // [NIY] The given Values manger is used to store additional configuration values.
@@ -42,6 +42,8 @@ public:
     #endif
 
 private:
+    String deviceid;
+
     Values *values;
 };
 

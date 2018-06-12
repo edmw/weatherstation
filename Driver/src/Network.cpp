@@ -17,13 +17,19 @@ extern Notification notification;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-Network::Network(void) {
+Network::Network(String deviceid) {
+    this->deviceid = deviceid;
     this->values = NULL;
 }
 
 bool Network::begin(Values *values) {
     this->values = values;
+
+    WiFi.hostname(deviceid.c_str());
     delay(100);
+    WiFi.persistent(false);
+    delay(100);
+
     return true;
 }
 
@@ -88,6 +94,8 @@ bool Network::connect(String logger) {
     }
     else {
         // Development: print debug output
+        notification.info(F("*WIFI: SSID: "), WiFi.SSID());
+        notification.info(F("*WIFI: PASS: "), WiFi.psk());
         wiFiManager.setDebugOutput(true);
     }
     wiFiManager.setConnectTimeout(2*60);
@@ -116,6 +124,7 @@ bool Network::connect(String logger) {
 }
 
 void Network::disconnect(void) {
+    WiFi.mode(WIFI_OFF);
     WiFi.forceSleepBegin();
     delay(100);
 }

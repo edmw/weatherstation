@@ -127,7 +127,7 @@ Notification notification = Notification();
 Files files = Files();
 Values values = Values();
 
-Network network = Network();
+Network network = Network(DEVICE_ID);
 
 Clock clock = Clock(Clock::off);
 
