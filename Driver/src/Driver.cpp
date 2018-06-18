@@ -507,7 +507,7 @@ void setup() {
 
     if (clock.begin()) {
         if (clock.isRunning() && clock.isIndeterminate()) {
-        #ifdef TRANSPORT_ON
+        #ifdef NETWORK_ON
             #ifdef PRIVATE
             if (network.connect(NETWORK_SSID, NETWORK_PASS)) {
             #else
@@ -519,7 +519,7 @@ void setup() {
             else {
                 notification.fatal(F("Failure to setup clock: no network!"), 4);
             }
-        #endif
+        #endif // NETWORK_ON
         }
     }
     else {
@@ -603,7 +603,7 @@ void loop() {
 
 
     // push readings to server
-    #ifdef TRANSPORT_ON
+    #if defined (NETWORK_ON) && defined (TRANSPORT_ON)
 
     notification.info(F("Push readings to server ..."));
     elapsed_millis push_readings_elapsed; // measure time needed for sending
@@ -643,16 +643,16 @@ void loop() {
     unsigned long push_readings_millis = push_readings_elapsed; // get time needed for sending
     notification.info_millis(F("Done pushing readings to server ... "), push_readings_millis);
 
-    #else // ifdef TRANSPORT_ON
+    #else // defined (NETWORK_ON) && defined (TRANSPORT_ON)
 
     notification.info(F("Skip pushing readings to server ... "));
 
-    #endif // ifdef TRANSPORT_ON
+    #endif // defined (NETWORK_ON) && defined (TRANSPORT_ON)
 
     // loop
 
     long interval = MEASURING_INTERVAL - get_readings_millis;
-    #ifdef TRANSPORT_ON
+    #if defined (NETWORK_ON) && defined (TRANSPORT_ON)
     interval = interval - push_readings_millis;
     #endif
     long interval_delay = std::max(interval, MEASURING_INTERVAL_DELAY_MIN);

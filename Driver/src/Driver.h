@@ -26,6 +26,10 @@ const String PROBE_LOCATION {"terrace"};
 // Note: This will have no effect at all if compiled for an Arduino system.
 #define DEEPSLEEP_ON
 
+// Enable network for clock synchronisation and measurement transport:
+// Undef to disable all network.
+#define NETWORK_ON
+
 // Enable transport to InfluxDB server: Undef to disable sending measurements.
 #define TRANSPORT_ON
 
@@ -58,6 +62,7 @@ const String PROBE_LOCATION { "unknown" };
 #define SIGNALING_LED -1
 
 #undef DEEPSLEEP_ON
+#define NETWORK_ON
 #define TRANSPORT_ON
 #undef I2C_EXTENDER_ON
 
