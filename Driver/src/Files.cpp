@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#ifdef ESP8266
+#if defined(ESP8266)
 #include <FS.h>
 #endif
 
@@ -17,7 +17,7 @@ Files::Files(void) {
 }
 
 bool Files::begin(void) {
-    #ifdef ESP8266
+    #if defined(ESP8266)
     if (SPIFFS.begin()) {
         if (!PRODUCTION) {
             // Development: print statistics
@@ -37,7 +37,7 @@ bool Files::begin(void) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Files::save(String filename, String string) {
-    #ifdef ESP8266
+    #if defined(ESP8266)
     File outfile = SPIFFS.open(String(filename + ".dat"), "w");
     if (outfile) {
         outfile.println(String(string + String('\r')));
@@ -50,7 +50,7 @@ void Files::save(String filename, String string) {
 }
 
 String Files::load(String filename) {
-    #ifdef ESP8266
+    #if defined(ESP8266)
     String string;
     File infile = SPIFFS.open(String(filename + ".dat"), "r");
     if (infile) {
@@ -63,12 +63,13 @@ String Files::load(String filename) {
         notification.warn(F("Failed to read from file:"), filename);
     }
     #endif
+    return String();
 }
 
 bool Files::exists(String filename) {
-  #ifdef ESP8266
-  return SPIFFS.exists(String(filename + ".dat"));
-  #else
-  return false;
-  #endif
+    #if defined(ESP8266)
+    return SPIFFS.exists(String(filename + ".dat"));
+    #else
+    return false;
+    #endif
 }

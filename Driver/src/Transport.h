@@ -7,7 +7,7 @@
 // Weather Station:
 // Class to transport all sensor readings of the Weather Station to a server. The readings will
 // be posted to an Influxdb’s REST api.
-// This is a no-op if not run on ESP8266.
+// This is a no-op if not run on ESP8266 or ESP32.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "Network.h"

@@ -29,10 +29,16 @@ bool Transport::begin(Network *network) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#ifdef ESP8266
+#if defined(ESP8266) || defined(ESP32)
 
 String format_fields(Readings &readings) {
     String fields;
+
+    float voltage0 = readings.retrieve(Readings::voltage);
+    if (!isnan(voltage0)) {
+        if (fields.length() > 0) fields += ",";
+        fields += "voltage0=" + String(voltage0, 4);
+    }
 
     float temperature0 = readings.retrieve(Readings::temperature);
     if (!isnan(temperature0)) {

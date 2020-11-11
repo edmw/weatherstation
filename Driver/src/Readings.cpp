@@ -21,6 +21,7 @@ void Readings::clear(void) {
     readings.humidity = NAN;
     readings.illuminance = NAN;
     readings.uvintensity = NAN;
+    readings.voltage = NAN;
     for (int i = 0; i <= READING_TYPE_MAX; i++) {
         sensor_ids[i] = String();
     }
@@ -32,6 +33,12 @@ void Readings::clear(void) {
 void Readings::store(float value, reading_type type, String sensor_id) {
     bool stored = false;
     switch (type) {
+    case voltage:
+        if (isnan(readings.voltage)) {
+            readings.voltage = value;
+            stored = true;
+        }
+        break;
     case temperature:
         if (isnan(readings.temperature)) {
             readings.temperature = value;
@@ -83,6 +90,8 @@ float Readings::retrieve(reading_type type, String &sensor_id) {
 }
 float Readings::retrieve(reading_type type) {
     switch (type) {
+    case voltage:
+        return readings.voltage;
     case temperature:
         return readings.temperature;
     case temperature_external:
@@ -104,6 +113,10 @@ void Readings::print(reading_type type) {
     float value = retrieve(type, sensor_id);
     if (!isnan(value)) {
         switch (type) {
+        case voltage:
+            SERIAL_PRINTF(value/1000, 1);
+            SERIAL_PRINT(F(" V"));
+            break;
         case temperature:
         case temperature_external:
             SERIAL_PRINTF(value, 1);
@@ -115,7 +128,7 @@ void Readings::print(reading_type type) {
             break;
         case humidity: // in percent
             SERIAL_PRINTF(value, 0);
-            SERIAL_PRINT(F(" %%"));
+            SERIAL_PRINT(F(" \045"));
             break;
         case illuminance: // in lux
             SERIAL_PRINTF(value, 1);
@@ -135,6 +148,10 @@ void Readings::print(reading_type type) {
 }
 
 void Readings::print(void) {
+    SERIAL_PRINT(F("Voltage:                "));
+    print(voltage);
+    SERIAL_PRINTLN();
+
     SERIAL_PRINT(F("Temperature:            "));
     print(temperature);
     SERIAL_PRINTLN();

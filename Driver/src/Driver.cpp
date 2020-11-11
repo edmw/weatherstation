@@ -7,12 +7,12 @@
 // * go to deep sleep for a defined amount of time to save power
 // https://github.com/edmw/weatherstation
 //
-// This driver is written to work on a ESP8266 controller chip.
+// This driver is written to work on a ESP8266 and ESP32 controller chip.
 // It will run with limited functionality on an Arduino system.
 //
 // This driver can send sensor measurements to an InfluxDB server using InfluxDB’s Line Protocol.
 //
-// Copyright (c) 2017-2018 Michael Baumgärtner
+// Copyright (c) 2017-2020 Michael Baumgärtner
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,6 +61,9 @@
 #include "Network.h"
 
 #include "Clock.h"
+#include "Switch.h"
+
+#include "OTA.h"
 
 // Hardware Support
 
@@ -99,16 +102,21 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Define identifier for a specific weather device. Derived from the ESP8266 chip id.
+// Define identifier for a specific weather device. Derived from the ESP8266 or ESP32 chip id.
 // This is used to identify a station on local network and as source identifier for measurements.
 // Note: If compiled for an Arduino system statically set to a fixed string.
-#ifdef ESP8266
+#if defined(ESP8266)
 const String DEVICE_ID = "ESP" + String(ESP.getChipId());
+#elif defined(ESP32)
+const uint64_t macAddress = ESP.getEfuseMac();
+const uint64_t macAddressTrunc = macAddress << 40;
+const uint32_t chipId = macAddressTrunc >> 40;
+const String DEVICE_ID = "ESP" + String(chipId);
 #else
 const String DEVICE_ID = "Arduino";
 #endif
 
-extern const int FW_VERSION;
+extern const int SKETCH_VERSION;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -116,8 +124,8 @@ extern const int FW_VERSION;
 extern const bool PRODUCTION = PRODUCTION_MODE;
 
 // Define measuring interval and minimum delay between measurements.
-const long MEASURING_INTERVAL = PRODUCTION ? 5 * 60 * 1000 : 1 * 60 * 1000; // milliseconds
-const long MEASURING_INTERVAL_DELAY_MIN = PRODUCTION ? 60 * 1000 : 20 * 1000; // milliseconds
+const long MEASURING_INTERVAL = PRODUCTION ? 5 * 60 * 1000 : 5 * 60 * 1000; // milliseconds
+const long MEASURING_INTERVAL_DELAY_MIN = PRODUCTION ? 60 * 1000 : 60 * 1000; // milliseconds
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -127,9 +135,17 @@ Notification notification = Notification();
 Files files = Files();
 Values values = Values();
 
-Network network = Network(DEVICE_ID);
+#ifdef PRIVATE
+Network driver_network = Network(DEVICE_ID, NETWORK_SSID, NETWORK_PASS);
+#else
+Network driver_network = Network(DEVICE_ID);
+#endif
 
-Clock clock = Clock(Clock::off);
+Clock driver_clock = Clock(Clock::off);
+
+#ifdef OTA_ON
+OTA ota = OTA();
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // I2C
@@ -147,6 +163,23 @@ I2CExtender i2c_extender(I2C_EXTENDER_ENABLE);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // INPUT
+
+#if defined(ESP8266)
+ADC_MODE(ADC_VCC);
+#endif
+
+// Switch for selecting test mode (different from PRODUCTION flag)
+// Must be connected to ground and closed to activate live mode.
+#ifdef TEST_SWITCH_ON
+#if !defined(TEST_SWITCH_PIN)
+#define TEST_SWITCH_PIN D5
+#endif
+#else
+#define TEST_SWITCH_PIN -1
+#endif
+
+Switch testSwitch(TEST_SWITCH_PIN, Switch::PullUp::Enable, 0);
+
 // For sensors with analog outputs this driver can use an 16-Bit analog-to-digital converter.
 // Supported sensors are
 // * ML8511
@@ -218,6 +251,27 @@ const String ML8511_ID = "ML8511";
 Readings readings;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+// VOLTAGE
+
+bool setupVoltage(void) {
+    #if defined(ESP8266)
+    pinMode(A0, INPUT);
+    #endif
+    return true;
+}
+
+void readVoltage(Readings *readings) {
+    #if defined(ESP8266)
+    float v = ESP.getVcc();
+    if (isnan(v)) {
+        notification.warn(F("Failed to read voltage!"));
+        return;
+    }
+    readings->store(v, Readings::voltage, "INTERNAL");
+    #endif
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 // DS18B20
 // datasheet: https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf
 #ifdef DS18B20_ON
@@ -260,7 +314,7 @@ bool setupBMP280(void) {
         return true;
     }
     notification.fatal(F("Failed to find a valid BMP280 sensor!"), 10);
-    return false;
+    std::terminate();
 }
 
 void readBMP280(Readings *readings) {
@@ -309,7 +363,7 @@ bool setupBME280(void) {
         return true;
     }
     notification.fatal(F("Failed to find a valid BME280 sensor!"), 11);
-    return false;
+    std::terminate();
 }
 
 void readBME280(Readings *readings) {
@@ -451,7 +505,9 @@ void setupSensorsViaI2C() {
 
     i2c_setup();
 
+    #ifdef I2C_DEBUG_ON
     if (!PRODUCTION) i2c_scan();
+    #endif
 
     #ifdef BME280_ON
     setupBME280();
@@ -485,46 +541,67 @@ void setupSensorsViaADS() {
 
 void setup() {
     SERIAL_BEGIN();
+    //SERIAL_DEBUG();
 
     signaling.begin(PRODUCTION);
     notification.begin(PRODUCTION, &signaling);
 
-    notification.info(F("Setup started"));
+    notification.info(F("Weather Device setup ... "),
+        PRODUCTION ? F("PRODUCTION") : F("DEVELOPMENT")
+    );
+
+    testSwitch.begin();
 
     // A Files object is used to manage a file-system in Flash memory.
     if (!files.begin()) {
-        notification.fatal(F("Failed to begin files!"), 1);
+        notification.fatal(F("Failed: begin files"), 1);
+        std::terminate();
     }
     // A Values object is used to manage a value-store in Flash memory.
     if (!values.begin(&files)) {
-        notification.fatal(F("Failed to begin values!"), 2);
+        notification.fatal(F("Failed: begin values"), 2);
+        std::terminate();
     }
 
     // A Network object is used to manage local network access.
-    if (!network.begin(&values)) {
-        notification.fatal(F("Failed to begin network!"), 3);
+    if (!driver_network.begin(&values)) {
+        notification.fatal(F("Failed: begin network"), 3);
+        std::terminate();
     }
 
-    if (clock.begin()) {
-        if (clock.isRunning() && clock.isIndeterminate()) {
-        #ifdef NETWORK_ON
-            #ifdef PRIVATE
-            if (network.connect(NETWORK_SSID, NETWORK_PASS)) {
-            #else
-            if (network.connect(DEVICE_ID)) {
-            #endif
-                clock.sync();
-                network.disconnect();
-            }
-            else {
-                notification.fatal(F("Failure to setup clock: no network!"), 4);
-            }
-        #endif // NETWORK_ON
+    #if defined(NETWORK_ON)
+    if (driver_network.connect()) {
+
+        #ifdef OTA_ON
+        if (ota.begin()) {
+            ota.performUpdate();
         }
+        else {
+            notification.fatal(F("Failed: begin update"), 5);
+            std::terminate();
+        }
+        #endif
+
+        if (driver_clock.begin()) {
+            if (driver_clock.isRunning() && driver_clock.isIndeterminate()) {
+                driver_clock.sync();
+            }
+        }
+        else {
+            notification.fatal(F("Failed: begin clock"), 6);
+            std::terminate();
+        }
+
+        driver_network.disconnect();
     }
     else {
-        notification.fatal(F("Failure to setup clock!"), 5);
+        notification.fatal(F("Failed: connect to network"), 4);
+        std::terminate();
     }
+    #endif // NETWORK_ON
+
+    // setup internal measurements
+    setupVoltage();
 
     // setup OneWire sensors
     setupSensorsViaOneWire();
@@ -544,7 +621,15 @@ void setup() {
 void deepSleepAndResetAfter(unsigned long sleep_millis);
 
 void loop() {
-    notification.info(F("Weather Device running ... "), DEVICE_ID + "/" + String(FW_VERSION));
+    #ifdef TEST_SWITCH_ON
+    bool test = testSwitch.read();
+    #else
+    bool test = !PRODUCTION;
+    #endif
+
+    notification.info(F("Weather Device running ... "),
+        DEVICE_ID + "/" + String(SKETCH_VERSION)
+    );
 
     notification.info(F("Get readings from sensors ..."));
     elapsed_millis get_readings_elapsed; // measure time needed for reading
@@ -562,6 +647,8 @@ void loop() {
     // get readings from sensors
     // Note: Order is important! Later readings won't override earlier ones!
     readings.clear();
+
+    readVoltage(&readings);
 
     #ifdef DS18B20_ON
     readDS18B20(&readings);
@@ -605,24 +692,22 @@ void loop() {
     // push readings to server
     #if defined (NETWORK_ON) && defined (TRANSPORT_ON)
 
-    notification.info(F("Push readings to server ..."));
+    notification.info(F("Push readings to server ..."),
+        test ? F("TEST") : TRANSPORT_DATABASE
+    );
     elapsed_millis push_readings_elapsed; // measure time needed for sending
 
-    #ifdef PRIVATE
-    if (network.connect(NETWORK_SSID, NETWORK_PASS)) {
-    #else
-    if (network.connect(DEVICE_ID)) {
-    #endif
-        clock.sync();
+    if (driver_network.connect()) {
+        driver_clock.sync();
 
         Transport transport(
             TRANSPORT_SERVER,
             TRANSPORT_PORT,
-            PRODUCTION ? TRANSPORT_DATABASE : "test",
+            test ? "test" : TRANSPORT_DATABASE,
             DEVICE_ID,
             PROBE_LOCATION
         );
-        if (transport.begin(&network)) {
+        if (transport.begin(&driver_network)) {
             if (transport.send(readings)) {
                 notification.info(F("Sent readings!"));
             }
@@ -634,7 +719,7 @@ void loop() {
             notification.warn(F("Failed to begin transport!"));
         }
 
-        network.disconnect();
+        driver_network.disconnect();
     }
     else {
         notification.warn(F("Failed to connect to network!"));
@@ -645,22 +730,26 @@ void loop() {
 
     #else // defined (NETWORK_ON) && defined (TRANSPORT_ON)
 
-    notification.info(F("Skip pushing readings to server ... "));
+    notification.info(F("Skip pushing readings to server ... "),
+        test ? F("TEST") : TRANSPORT_DATABASE
+    );
 
     #endif // defined (NETWORK_ON) && defined (TRANSPORT_ON)
 
     // loop
 
-    long interval = MEASURING_INTERVAL - get_readings_millis;
+    long interval = MEASURING_INTERVAL - get_readings_millis - 500;
     #if defined (NETWORK_ON) && defined (TRANSPORT_ON)
     interval = interval - push_readings_millis;
     #endif
     long interval_delay = std::max(interval, MEASURING_INTERVAL_DELAY_MIN);
     #ifdef DEEPSLEEP_ON
     notification.info_millis(F("*Sleeping for "), interval_delay);
+    delay(500);
     deepSleepAndResetAfter(interval_delay);
     #else
     notification.info_millis(F("*Delaying for "), interval_delay);
+    delay(500);
     delay(interval_delay);
     #endif
 }
@@ -669,8 +758,8 @@ void loop() {
 
 /// Deep sleep for the specified amount of milliseconds and start again with reset.
 void deepSleepAndResetAfter(unsigned long sleep_millis) {
-    #ifdef ESP8266
-    ESP.deepSleep(sleep_millis * 1000, WAKE_RF_DISABLED);
+    #if defined(ESP8266) || defined(ESP32)
+    ESP.deepSleep(sleep_millis * 1000);
     #else
     delay(sleep_millis);
     #endif

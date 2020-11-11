@@ -1,4 +1,4 @@
-extern const int FW_VERSION = 1;
+extern const int SKETCH_VERSION = 1;
 
 // => Driver.cpp
 extern void setup(void);

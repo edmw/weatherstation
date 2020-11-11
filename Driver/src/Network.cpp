@@ -1,11 +1,16 @@
 #include <Arduino.h>
 
-#ifdef ESP8266
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
 #include <WiFiManager.h>
 #include <Ticker.h>
+#elif defined(ESP32)
+#include <WiFi.h>
+#include <WiFiClient.h>
 #endif
 
 #include "Network.h"
+#include "System.h"
 
 #include "Values.h"
 #include "Signaling.h"
@@ -17,24 +22,32 @@ extern Notification notification;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-Network::Network(String deviceid) {
-    this->deviceid = deviceid;
-    this->values = NULL;
+Network::Network(String deviceid)
+    : deviceid(deviceid), ssid(""), sspw(""), values(NULL) {
+}
+
+Network::Network(String deviceid, String ssid, String sspw)
+     : deviceid(deviceid), ssid(ssid), sspw(sspw), values(NULL) {
 }
 
 bool Network::begin(Values *values) {
     this->values = values;
 
+    #if defined(ESP8266)
+    notification.info(F("*WIFI: HOSTNAME: "), deviceid);
     WiFi.hostname(deviceid.c_str());
     delay(100);
-    WiFi.persistent(false);
+    #elif defined(ESP32)
+    notification.info(F("*WIFI: HOSTNAME: "), deviceid);
+    WiFi.setHostname(deviceid.c_str());
     delay(100);
+    #endif
 
     return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#ifdef ESP8266
+#if defined(ESP8266)
 
 Ticker ticker;
 
@@ -66,12 +79,23 @@ void finishNetworkForWiFi(WiFiManager *wm, Network *network) {
     signaling.signal_off();
 }
 
-bool Network::connect(String ssid, String password) {
-    WiFi.forceSleepWake();
-    delay(100);
+bool Network::connect() {
+    System::wifiOn();
 
-    WiFi.mode(WIFI_STA);
-    delay(100);
+    if (connect(ssid, sspw)) {
+        return true;
+    }
+
+    if (connect(deviceid)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool Network::connect(String ssid, String password) {
+    if ((ssid.length() == 0) || (sspw.length() == 0)) { return false; }
+
     WiFi.begin(ssid.c_str(), password.c_str());
     int status = WiFi.waitForConnectResult();
     if (status != WL_CONNECTED) {
@@ -80,9 +104,8 @@ bool Network::connect(String ssid, String password) {
     return status == WL_CONNECTED;
 }
 
-bool Network::connect(String logger) {
-    WiFi.forceSleepWake();
-    delay(100);
+bool Network::connect(String deviceid) {
+    if (deviceid.length() == 0) { return false; }
 
     char influx_secret_buffer[34];
     values->copy(influx_secret_buffer, sizeof(influx_secret_buffer), Values::influx_secret);
@@ -98,7 +121,7 @@ bool Network::connect(String logger) {
         notification.info(F("*WIFI: PASS: "), WiFi.psk());
         wiFiManager.setDebugOutput(true);
     }
-    wiFiManager.setConnectTimeout(2*60);
+    wiFiManager.setConnectTimeout(1*60);
     wiFiManager.setConfigPortalTimeout(5*60);
 
     WiFiManagerParameter wm_influx_secret("Influx", "Influx Shared Secret", influx_secret_buffer, 32);
@@ -108,7 +131,7 @@ bool Network::connect(String logger) {
 
     prepareNetworkForWiFi(&wiFiManager, this);
 
-    if (wiFiManager.autoConnect(logger.c_str(), NULL)) {
+    if (wiFiManager.autoConnect(deviceid.c_str(), NULL)) {
 
         strlcpy(influx_secret_buffer, wm_influx_secret.getValue(), 34);
         if (configChanged) {
@@ -124,9 +147,39 @@ bool Network::connect(String logger) {
 }
 
 void Network::disconnect(void) {
-    WiFi.mode(WIFI_OFF);
-    WiFi.forceSleepBegin();
-    delay(100);
+    WiFi.disconnect();
+}
+
+std::unique_ptr<Client> Network::createClient(void) {
+    return std::unique_ptr<Client>(new WiFiClient());
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+#elif defined(ESP32)
+
+bool Network::connect() {
+    System::wifiOn();
+
+    if (connect(ssid, sspw)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool Network::connect(String ssid, String password) {
+    if ((ssid.length() == 0) || (sspw.length() == 0)) { return false; }
+
+    WiFi.begin(ssid.c_str(), password.c_str());
+    int status = WiFi.waitForConnectResult();
+    if (status != WL_CONNECTED) {
+        notification.info(F("*WIFI: status: "), status);
+    }
+    return status == WL_CONNECTED;
+}
+
+void Network::disconnect(void) {
+    WiFi.disconnect();
 }
 
 std::unique_ptr<Client> Network::createClient(void) {
@@ -138,6 +191,14 @@ std::unique_ptr<Client> Network::createClient(void) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool Network::connect(void) {
+    return false;
+}
+
+bool connect(String ssid, String sspw) {
+    return false;
+}
+
+bool connect(String deviceid) {
     return false;
 }
 

@@ -4,7 +4,8 @@
 #define SERIAL_OUT 1
 
 #if SERIAL_OUT
-#define SERIAL_BEGIN() { delay(500); Serial.begin(9600); while (!Serial); }
+#define SERIAL_BEGIN() { delay(100); Serial.begin(9600); while (!Serial);  delay(100); }
+#define SERIAL_DEBUG() { Serial.setDebugOutput(true); }
 #define SERIAL_PRINT(s) { Serial.print(s); }
 #define SERIAL_PRINTF(s, f) { Serial.print(s, f); }
 #define SERIAL_PRINTB(b) { b ? Serial.print(F("TRUE")) : Serial.print(F("FALSE")); }
@@ -15,6 +16,7 @@
 #define SERIAL_PRINT_BYTE(b) { Serial.print(F("0x")); if (b < 16) Serial.print(F("0")); Serial.print(b, HEX); }
 #else
 #define SERIAL_BEGIN()
+#define SERIAL_DEBUG()
 #define SERIAL_PRINT(s)
 #define SERIAL_PRINTF(s, f)
 #define SERIAL_PRINTB

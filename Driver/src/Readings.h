@@ -16,6 +16,7 @@ typedef unsigned long time_t;
 
 typedef struct {
     time_t timestamp;
+    float voltage;
     float temperature;
     float temperature_external;
     float pressure;
@@ -33,7 +34,8 @@ public:
         humidity = 3,
         illuminance = 4,
         uvintensity = 5,
-        READING_TYPE_MAX = uvintensity
+        voltage = 6,
+        READING_TYPE_MAX = voltage
     };
 
     Readings(void);

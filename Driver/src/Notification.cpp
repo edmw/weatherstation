@@ -15,6 +15,7 @@ Notification::Notification() {
 bool Notification::begin(bool production, Signaling *signaling) {
     this->production = production;
     this->signaling = signaling;
+    info(F("\r\n"));
     return true;
 }
 
@@ -65,7 +66,7 @@ void Notification::warn(const __FlashStringHelper *message, const String &printa
     }
 }
 
-void Notification::fatal(const __FlashStringHelper *message, uint8_t blink) {
+[[noreturn]] void Notification::fatal(const __FlashStringHelper *message, uint8_t blink) {
     SERIAL_PRINT(F("FATAL: ")); SERIAL_PRINTLN(message);
     if (signaling != NULL) {
         signaling->signal_failure_count(blink);
