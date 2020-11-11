@@ -17,7 +17,11 @@ void i2c_scan() {
     int nDevices;
 
     notification.info(F("*I2C: Scanning ..."));
-
+    #if defined(I2C_SDA) && defined(I2C_SCL)
+    notification.info(F("*I2C: SDA: "), I2C_SDA);
+    notification.info(F("*I2C: SCL: "), I2C_SCL);
+    #endif
+    
     nDevices = 0;
     for(byte address = 1; address < 127; address++ ) {
         Wire.beginTransmission(address);
