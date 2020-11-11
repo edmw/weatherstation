@@ -46,6 +46,7 @@ DateTime Clock::now(void) {
         return DateTime();
     }
     notification.fatal(F("Invalid clock type!"));
+    std::terminate();
 }
 
 void Clock::adjust(const DateTime& dt) {
@@ -58,6 +59,7 @@ void Clock::adjust(const DateTime& dt) {
         return;
     }
     notification.fatal(F("Invalid clock type!"));
+    std::terminate();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,6 +86,7 @@ bool Clock::isIndeterminate(void) {
         return false;
     }
     notification.fatal(F("Invalid clock type!"));
+    std::terminate();
 }
 
 void Clock::sync(void) {
