@@ -2,6 +2,7 @@
 
 #include "Notification.h"
 #include "Signaling.h"
+#include "System.h"
 
 #include "SERIAL.h"
 
@@ -66,12 +67,31 @@ void Notification::warn(const __FlashStringHelper *message, const String &printa
     }
 }
 
-[[noreturn]] void Notification::fatal(const __FlashStringHelper *message, uint8_t blink) {
+void Notification::fatal(const __FlashStringHelper *message, uint8_t blink, bool forever) {
     SERIAL_PRINT(F("FATAL: ")); SERIAL_PRINTLN(message);
     if (signaling != NULL) {
-        signaling->signal_failure_count(blink);
+        if (forever) {
+            // blink forever and does never return nor reset
+            signaling->signal_failure_count_forever(blink);
+        }
+        else {
+            // blink 10 times then go on with System::fatal
+            for (int i = 0; i < 10; i++) {
+                signaling->signal_failure_count_once(blink);
+            }
+        }
     }
-    while(1);
+    else {
+        if (forever) {
+            // no-op and does never return nor reset
+            while(1) {
+                delay(1000);
+            }
+        }
+        else {
+            // no-op then go on with System::fatal
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

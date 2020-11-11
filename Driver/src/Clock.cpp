@@ -7,6 +7,8 @@
 
 #include "Notification.h"
 
+#include "System.h"
+
 extern Notification notification;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,6 +26,8 @@ Clock::Clock(clock_type type) {
 }
 
 bool Clock::begin(void) {
+    notification.info(F("*CLOCK: TYPE: "), type);
+
     switch (type) {
     case real:
         return rtc.begin();
@@ -45,8 +49,7 @@ DateTime Clock::now(void) {
     case off:
         return DateTime();
     }
-    notification.fatal(F("Invalid clock type!"));
-    std::terminate();
+    TERMINATE_FATAL(F("Invalid clock type!"));
 }
 
 void Clock::adjust(const DateTime& dt) {
@@ -58,8 +61,7 @@ void Clock::adjust(const DateTime& dt) {
     case off:
         return;
     }
-    notification.fatal(F("Invalid clock type!"));
-    std::terminate();
+    TERMINATE_FATAL(F("Invalid clock type!"));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,8 +87,7 @@ bool Clock::isIndeterminate(void) {
     case off:
         return false;
     }
-    notification.fatal(F("Invalid clock type!"));
-    std::terminate();
+    TERMINATE_FATAL(F("Invalid clock type!"));
 }
 
 void Clock::sync(void) {

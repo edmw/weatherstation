@@ -4,6 +4,7 @@
 #include <ESP8266WiFi.h>
 #elif defined(ESP32)
 #include <WiFi.h>
+#include <esp_task_wdt.h>
 #endif
 
 #include "System.h"
@@ -96,3 +97,20 @@ void System::wifiOff() {
 
 #endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+[[ noreturn ]] void System::panic() {
+    #if defined(ESP8266)
+    // disable software watchdog
+    ESP.wdtDisable();
+
+    #elif defined(ESP32)
+    // set watchdog to panic after ten seconds
+    esp_task_wdt_init(10, true);
+    // add current thread to watchdog
+    esp_task_wdt_add(NULL);
+
+    #endif
+
+    // hardware watchdog resets
+    while (1){};
+}

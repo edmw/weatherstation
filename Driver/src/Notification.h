@@ -8,7 +8,6 @@
 // Class to produce output to the serial connection.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Signaling.h"
 
 class Notification {
@@ -38,7 +37,7 @@ public:
     // Any of the following methods produces output to the serial connection, triggers a signal
     // and stops execution.
 
-    void fatal(const __FlashStringHelper *message, uint8_t blink = 0);
+    void fatal(const __FlashStringHelper *message, uint8_t blink = 0, bool forever = true);
 
 private:
     bool production;

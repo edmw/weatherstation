@@ -33,6 +33,8 @@ Network::Network(String deviceid, String ssid, String sspw)
 bool Network::begin(Values *values) {
     this->values = values;
 
+    notification.info(F("*WIFI: MAC: "), WiFi.macAddress());
+
     #if defined(ESP8266)
     notification.info(F("*WIFI: HOSTNAME: "), deviceid);
     WiFi.hostname(deviceid.c_str());
@@ -171,7 +173,11 @@ bool Network::connect(String ssid, String password) {
     if ((ssid.length() == 0) || (sspw.length() == 0)) { return false; }
 
     WiFi.begin(ssid.c_str(), password.c_str());
-    int status = WiFi.waitForConnectResult();
+    int status;
+    do {
+        status = WiFi.waitForConnectResult();
+    }
+    while (status == WL_IDLE_STATUS);
     if (status != WL_CONNECTED) {
         notification.info(F("*WIFI: status: "), status);
     }

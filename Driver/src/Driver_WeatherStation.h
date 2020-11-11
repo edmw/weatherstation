@@ -37,6 +37,7 @@ const String PROBE_LOCATION { "terrace" };
 #define DS18B20_ON
 #undef BMP280_ON
 #define BME280_ON
+#undef SHT30_ON
 #undef DHT22_ON
 #undef TSL2561_ON
 #undef VEML6070_ON

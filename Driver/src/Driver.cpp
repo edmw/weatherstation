@@ -63,6 +63,8 @@
 #include "Clock.h"
 #include "Switch.h"
 
+#include "System.h"
+
 #include "OTA.h"
 
 // Hardware Support
@@ -77,6 +79,7 @@
 #include <Adafruit_TSL2561_U.h>
 #include <Adafruit_VEML6070.h>
 #include <DHT.h>
+#include <SHTSensor.h>
 #include <SPI.h>
 
 // Weather Device
@@ -124,8 +127,8 @@ extern const int SKETCH_VERSION;
 extern const bool PRODUCTION = PRODUCTION_MODE;
 
 // Define measuring interval and minimum delay between measurements.
-const long MEASURING_INTERVAL = PRODUCTION ? 5 * 60 * 1000 : 5 * 60 * 1000; // milliseconds
-const long MEASURING_INTERVAL_DELAY_MIN = PRODUCTION ? 60 * 1000 : 60 * 1000; // milliseconds
+const long MEASURING_INTERVAL = PRODUCTION ? 5 * 60 * 1000 : 1 * 60 * 1000; // milliseconds
+const long MEASURING_INTERVAL_DELAY_MIN = PRODUCTION ? 60 * 1000 : 10 * 1000; // milliseconds
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -213,6 +216,12 @@ Adafruit_BMP280 bmp280;
 #define BME280_I2C 0x76
 const String BME280_ID = "BME280";
 Adafruit_BME280 bme280;
+
+// Temperature + Humidity
+#ifdef SHT30_ON
+const String SHT30_ID = "SHT30";
+SHTSensor sht(SHTSensor::SHT3X);
+#endif
 
 // Temperature + Humidity
 #ifdef DHT22_ON
@@ -313,8 +322,7 @@ bool setupBMP280(void) {
     if (bmp280.begin(BMP280_I2C)) {
         return true;
     }
-    notification.fatal(F("Failed to find a valid BMP280 sensor!"), 10);
-    std::terminate();
+    TERMINATE_FATAL_BLINK(F("Failed to find a valid BMP280 sensor!"), 10);
 }
 
 void readBMP280(Readings *readings) {
@@ -362,8 +370,7 @@ bool setupBME280(void) {
         );
         return true;
     }
-    notification.fatal(F("Failed to find a valid BME280 sensor!"), 11);
-    std::terminate();
+    TERMINATE_FATAL_BLINK(F("Failed to find a valid BME280 sensor!"), 11);
 }
 
 void readBME280(Readings *readings) {
@@ -380,6 +387,31 @@ void readBME280(Readings *readings) {
   readings->store(p, Readings::pressure, BME280_ID);
   readings->store(h, Readings::humidity, BME280_ID);
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// SHT30
+// datasheet: https://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/2_Humidity_Sensors/Datasheets/Sensirion_Humidity_Sensors_SHT3x_Datasheet_digital.pdf
+#ifdef SHT30_ON
+
+bool setupSHT30(void) {
+    sht.init();
+    return true;
+}
+
+void readSHT30(Readings *readings) {
+    if (sht.readSample()) {
+        float t = sht.getTemperature();
+        float h = sht.getHumidity();
+        if (isnan(t) || isnan(h)) {
+            notification.warn(F("Failed to read from SHT30 sensor!"));
+            return;
+        }
+        readings->store(t, Readings::temperature, SHT30_ID);
+        readings->store(h, Readings::humidity, SHT30_ID);
+    }
+}
+
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // DHT22
@@ -517,6 +549,10 @@ void setupSensorsViaI2C() {
     setupBMP280();
     #endif
 
+    #ifdef SHT30_ON
+    setupSHT30();
+    #endif
+
     #ifdef TSL2561_ON
     setupTSL2561();
     #endif
@@ -554,19 +590,16 @@ void setup() {
 
     // A Files object is used to manage a file-system in Flash memory.
     if (!files.begin()) {
-        notification.fatal(F("Failed: begin files"), 1);
-        std::terminate();
+        TERMINATE_FATAL_BLINK(F("Failed: begin files"), 1);
     }
     // A Values object is used to manage a value-store in Flash memory.
     if (!values.begin(&files)) {
-        notification.fatal(F("Failed: begin values"), 2);
-        std::terminate();
+        TERMINATE_FATAL_BLINK(F("Failed: begin values"), 2);
     }
 
     // A Network object is used to manage local network access.
     if (!driver_network.begin(&values)) {
-        notification.fatal(F("Failed: begin network"), 3);
-        std::terminate();
+        TERMINATE_FATAL_BLINK(F("Failed: begin network"), 3);
     }
 
     #if defined(NETWORK_ON)
@@ -577,8 +610,7 @@ void setup() {
             ota.performUpdate();
         }
         else {
-            notification.fatal(F("Failed: begin update"), 5);
-            std::terminate();
+            TERMINATE_FATAL_BLINK(F("Failed: begin update"), 5);
         }
         #endif
 
@@ -588,15 +620,13 @@ void setup() {
             }
         }
         else {
-            notification.fatal(F("Failed: begin clock"), 6);
-            std::terminate();
+            TERMINATE_FATAL_BLINK(F("Failed: begin clock"), 6);
         }
 
         driver_network.disconnect();
     }
     else {
-        notification.fatal(F("Failed: connect to network"), 4);
-        std::terminate();
+        TERMINATE_FATAL_BLINK_RESTART(F("Failed: connect to network"), 4);
     }
     #endif // NETWORK_ON
 
@@ -652,6 +682,10 @@ void loop() {
 
     #ifdef DS18B20_ON
     readDS18B20(&readings);
+    #endif
+
+    #if defined (SHT30_ON)
+    readSHT30(&readings);
     #endif
 
     #if defined (BMP280_ON) && ! defined (BME280_ON)

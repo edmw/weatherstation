@@ -10,6 +10,13 @@
 #include <rom/rtc.h>
 #endif
 
+#define TERMINATE_FATAL(message) notification.fatal(message); \
+    std::terminate();
+#define TERMINATE_FATAL_BLINK(message, count) notification.fatal(message, count); \
+    std::terminate();
+#define TERMINATE_FATAL_BLINK_RESTART(message, count) notification.fatal(message, count, false); \
+    System::panic();
+
 class System {
 
 public:
@@ -30,6 +37,8 @@ public:
 
     static void wifiOn();
     static void wifiOff();
+
+    static void panic();
 };
 
 #endif

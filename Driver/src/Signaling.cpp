@@ -43,6 +43,23 @@ void Signaling::signal_failure_once(int ms) {
     }
 }
 
+void Signaling::signal_failure_count_once(uint8_t num) {
+    if (ledpin >= 0) {
+        for (uint8_t i = 0; i < num; i++) {
+            digitalWrite(ledpin, LOW);
+            delay(500);
+            digitalWrite(ledpin, HIGH);
+            delay(500);
+        }
+        for (uint8_t i = 0; i < 20; i++) {
+            digitalWrite(ledpin, LOW);
+            delay(50);
+            digitalWrite(ledpin, HIGH);
+            delay(50);
+        }
+    }
+}
+
 void Signaling::signal_failure_forever(int ms) {
     while (ledpin >= 0) {
         digitalWrite(ledpin, LOW);
@@ -55,7 +72,7 @@ void Signaling::signal_failure_forever(int ms) {
     }
 }
 
-void Signaling::signal_failure_count(uint8_t num) {
+void Signaling::signal_failure_count_forever(uint8_t num) {
     while (ledpin >= 0) {
         for (uint8_t i = 0; i < num; i++) {
             digitalWrite(ledpin, LOW);

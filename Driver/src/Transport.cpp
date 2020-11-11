@@ -46,6 +46,12 @@ String format_fields(Readings &readings) {
         fields += "temperature0=" + String(temperature0, 4);
     }
 
+    float temperature0_1 = readings.retrieve(Readings::temperature_alternate);
+    if (!isnan(temperature0_1)) {
+        if (fields.length() > 0) fields += ",";
+        fields += "temperature0_1=" + String(temperature0_1, 4);
+    }
+
     float temperature1 = readings.retrieve(Readings::temperature_external);
     if (!isnan(temperature1)) {
         if (fields.length() > 0) fields += ",";
@@ -56,6 +62,12 @@ String format_fields(Readings &readings) {
     if (!isnan(humidity0)) {
         if (fields.length() > 0) fields += ",";
         fields += "humidity0=" + String(humidity0, 4);
+    }
+
+    float humidity0_1 = readings.retrieve(Readings::humidity_alternate);
+    if (!isnan(humidity0_1)) {
+        if (fields.length() > 0) fields += ",";
+        fields += "humidity0_1=" + String(humidity0_1, 4);
     }
 
     float pressure0 = readings.retrieve(Readings::pressure);

@@ -22,10 +22,12 @@ public:
 
     // Signals a failure by blinking output once.
     void signal_failure_once(int ms);
+    // Signals a failure by blinking a number of counts once.
+    void signal_failure_count_once(uint8_t num);
     // Signals a failure by blinking output forever. This method does not return.
     void signal_failure_forever(int ms);
-    // Signals a failure by blinking output forever. This method does not return.
-    void signal_failure_count(uint8_t num);
+    // Signals a failure by blinking a number of counts forever. This method does not return.
+    void signal_failure_count_forever(uint8_t num);
 
 private:
     int ledpin;

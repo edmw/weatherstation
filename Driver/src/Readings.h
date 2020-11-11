@@ -18,9 +18,11 @@ typedef struct {
     time_t timestamp;
     float voltage;
     float temperature;
+    float temperature_alternate;
     float temperature_external;
     float pressure;
     float humidity;
+    float humidity_alternate;
     float illuminance;
     float uvintensity;
 } readings_t;
@@ -29,12 +31,14 @@ class Readings {
 public:
     enum reading_type {
         temperature = 0,
-        temperature_external = 1,
-        pressure = 2,
-        humidity = 3,
-        illuminance = 4,
-        uvintensity = 5,
-        voltage = 6,
+        temperature_alternate = 1,
+        temperature_external = 2,
+        pressure = 3,
+        humidity = 4,
+        humidity_alternate = 5,
+        illuminance = 6,
+        uvintensity = 7,
+        voltage = 8,
         READING_TYPE_MAX = voltage
     };
 

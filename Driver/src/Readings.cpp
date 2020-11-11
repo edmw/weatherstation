@@ -16,9 +16,11 @@ Readings::Readings(void) { }
 void Readings::clear(void) {
     readings.timestamp = 0;
     readings.temperature = NAN;
+    readings.temperature_alternate = NAN;
     readings.temperature_external = NAN;
     readings.pressure = NAN;
     readings.humidity = NAN;
+    readings.humidity_alternate = NAN;
     readings.illuminance = NAN;
     readings.uvintensity = NAN;
     readings.voltage = NAN;
@@ -43,6 +45,14 @@ void Readings::store(float value, reading_type type, String sensor_id) {
         if (isnan(readings.temperature)) {
             readings.temperature = value;
             stored = true;
+            break;
+        }
+        // fallthrough allows setting alternate value if original value is set already
+    case temperature_alternate:
+        if (isnan(readings.temperature_alternate)) {
+            type = temperature_alternate;
+            readings.temperature_alternate = value;
+            stored = true;
         }
         break;
     case temperature_external:
@@ -60,6 +70,14 @@ void Readings::store(float value, reading_type type, String sensor_id) {
     case humidity:
         if (isnan(readings.humidity)) {
             readings.humidity = value;
+            stored = true;
+            break;
+        }
+        // fallthrough allows setting alternate value if original value is set already
+    case humidity_alternate:
+        if (isnan(readings.humidity_alternate)) {
+            type = humidity_alternate;
+            readings.humidity_alternate = value;
             stored = true;
         }
         break;
@@ -88,18 +106,23 @@ float Readings::retrieve(reading_type type, String &sensor_id) {
     sensor_id = sensor_ids[type];
     return retrieve(type);
 }
+
 float Readings::retrieve(reading_type type) {
     switch (type) {
     case voltage:
         return readings.voltage;
     case temperature:
         return readings.temperature;
+    case temperature_alternate:
+        return readings.temperature_alternate;
     case temperature_external:
         return readings.temperature_external;
     case pressure:
         return readings.pressure;
     case humidity:
         return readings.humidity;
+    case humidity_alternate:
+        return readings.humidity_alternate;
     case illuminance:
         return readings.illuminance;
     case uvintensity:
@@ -118,6 +141,7 @@ void Readings::print(reading_type type) {
             SERIAL_PRINT(F(" V"));
             break;
         case temperature:
+        case temperature_alternate:
         case temperature_external:
             SERIAL_PRINTF(value, 1);
             SERIAL_PRINT(F(" °C"));
@@ -127,6 +151,7 @@ void Readings::print(reading_type type) {
             SERIAL_PRINT(F(" hPa"));
             break;
         case humidity: // in percent
+        case humidity_alternate:
             SERIAL_PRINTF(value, 0);
             SERIAL_PRINT(F(" \045"));
             break;
@@ -148,31 +173,39 @@ void Readings::print(reading_type type) {
 }
 
 void Readings::print(void) {
-    SERIAL_PRINT(F("Voltage:                "));
+    SERIAL_PRINT(F("Voltage:                 "));
     print(voltage);
     SERIAL_PRINTLN();
 
-    SERIAL_PRINT(F("Temperature:            "));
+    SERIAL_PRINT(F("Temperature:             "));
     print(temperature);
     SERIAL_PRINTLN();
 
-    SERIAL_PRINT(F("Temperature (external): "));
+    SERIAL_PRINT(F("Temperature (alternate): "));
+    print(temperature_alternate);
+    SERIAL_PRINTLN();
+
+    SERIAL_PRINT(F("Temperature (external):  "));
     print(temperature_external);
     SERIAL_PRINTLN();
 
-    SERIAL_PRINT(F("Pressure:               "));
+    SERIAL_PRINT(F("Pressure:                "));
     print(pressure);
     SERIAL_PRINTLN();
 
-    SERIAL_PRINT(F("Humidity:               "));
+    SERIAL_PRINT(F("Humidity:                "));
     print(humidity);
     SERIAL_PRINTLN();
 
-    SERIAL_PRINT(F("Illuminance:            "));
+    SERIAL_PRINT(F("Humidity (alternate):    "));
+    print(humidity_alternate);
+    SERIAL_PRINTLN();
+
+    SERIAL_PRINT(F("Illuminance:             "));
     print(illuminance);
     SERIAL_PRINTLN();
 
-    SERIAL_PRINT(F("UV Intensity:           "));
+    SERIAL_PRINT(F("UV Intensity:            "));
     print(uvintensity);
     SERIAL_PRINTLN();
 }

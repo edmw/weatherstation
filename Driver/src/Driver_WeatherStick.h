@@ -28,6 +28,7 @@ const String PROBE_LOCATION { "unknown" };
 #undef DS18B20_ON
 #define BMP280_ON
 #undef BME280_ON
+#define SHT30_ON
 #undef DHT22_ON
 #undef TSL2561_ON
 #undef VEML6070_ON
